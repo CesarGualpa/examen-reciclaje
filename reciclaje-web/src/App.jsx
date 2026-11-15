@@ -32,7 +32,13 @@ function App() {
     const [cargando, setCargando] =
         useState(true);
 
+    const [enviando, setEnviando] =
+        useState(false);
+
     const [error, setError] =
+        useState("");
+
+    const [mensaje, setMensaje] =
         useState("");
 
 
@@ -45,12 +51,10 @@ function App() {
 
                 setError("");
 
-
                 const response =
                     await fetch(
                         `${API_BASE_URL}/api/puntos`
                     );
-
 
                 if (!response.ok) {
 
@@ -59,20 +63,16 @@ function App() {
                     );
                 }
 
-
                 const datos =
                     await response.json();
 
-
                 setPuntos(datos);
-
 
             } catch (error) {
 
                 setError(
                     error.message
                 );
-
 
             } finally {
 
@@ -89,17 +89,91 @@ function App() {
     }, [cargarPuntos]);
 
 
-    const manejarSubmit = (e) => {
+    const manejarSubmit =
+        async (e) => {
 
-        e.preventDefault();
+            e.preventDefault();
 
-        console.log({
-            nombre,
-            sector,
-            material,
-            capacidad
-        });
-    };
+            setError("");
+            setMensaje("");
+            setEnviando(true);
+
+
+            const nuevoPunto = {
+
+                nombre:
+                    nombre.trim(),
+
+                sector:
+                    sector.trim(),
+
+                material:
+                    material.trim(),
+
+                capacidad:
+                    Number(capacidad)
+            };
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${API_BASE_URL}/api/puntos`,
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify(
+                                    nuevoPunto
+                                )
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "No se pudo registrar el punto de reciclaje"
+                    );
+                }
+
+
+                const puntoCreado =
+                    await response.json();
+
+
+                setMensaje(
+                    `Punto "${puntoCreado.nombre}" registrado correctamente`
+                );
+
+
+                setNombre("");
+                setSector("");
+                setMaterial("");
+                setCapacidad("");
+
+
+                await cargarPuntos();
+
+
+            } catch (error) {
+
+                setError(
+                    error.message
+                );
+
+
+            } finally {
+
+                setEnviando(false);
+            }
+        };
 
 
     return (
@@ -126,9 +200,22 @@ function App() {
 
             <section className="form-section">
 
-                <h2>
-                    Registrar nuevo punto
-                </h2>
+                <div className="section-title">
+
+                    <div>
+
+                        <h2>
+                            Registrar nuevo punto
+                        </h2>
+
+                        <p>
+                            Completa los cuatro campos
+                            solicitados.
+                        </p>
+
+                    </div>
+
+                </div>
 
 
                 <form
@@ -145,12 +232,14 @@ function App() {
                         <input
                             id="nombre"
                             type="text"
+                            placeholder="Ej. EcoEstación Norte"
                             value={nombre}
                             onChange={(e) =>
                                 setNombre(
                                     e.target.value
                                 )
                             }
+                            disabled={enviando}
                             required
                         />
 
@@ -160,18 +249,20 @@ function App() {
                     <div className="form-group">
 
                         <label htmlFor="sector">
-                            Sector
+                            Sector o barrio
                         </label>
 
                         <input
                             id="sector"
                             type="text"
+                            placeholder="Ej. La Floresta"
                             value={sector}
                             onChange={(e) =>
                                 setSector(
                                     e.target.value
                                 )
                             }
+                            disabled={enviando}
                             required
                         />
 
@@ -181,18 +272,20 @@ function App() {
                     <div className="form-group">
 
                         <label htmlFor="material">
-                            Material
+                            Material recibido
                         </label>
 
                         <input
                             id="material"
                             type="text"
+                            placeholder="Ej. Plástico"
                             value={material}
                             onChange={(e) =>
                                 setMaterial(
                                     e.target.value
                                 )
                             }
+                            disabled={enviando}
                             required
                         />
 
@@ -202,19 +295,21 @@ function App() {
                     <div className="form-group">
 
                         <label htmlFor="capacidad">
-                            Capacidad
+                            Capacidad disponible
                         </label>
 
                         <input
                             id="capacidad"
                             type="number"
                             min="1"
+                            placeholder="Ej. 120"
                             value={capacidad}
                             onChange={(e) =>
                                 setCapacidad(
                                     e.target.value
                                 )
                             }
+                            disabled={enviando}
                             required
                         />
 
@@ -224,28 +319,27 @@ function App() {
                     <button
                         className="btn-registrar"
                         type="submit"
+                        disabled={enviando}
                     >
-                        Registrar Punto
+
+                        {
+                            enviando
+                                ? "Registrando..."
+                                : "Registrar Punto"
+                        }
+
                     </button>
 
                 </form>
 
-            </section>
 
+                {mensaje && (
 
-            <section className="listado-section">
+                    <p className="mensaje-exito">
+                        {mensaje}
+                    </p>
 
-                <div className="listado-header">
-
-                    <h2>
-                        Puntos registrados
-                    </h2>
-
-                    <span>
-                        Total: {puntos.length}
-                    </span>
-
-                </div>
+                )}
 
 
                 {error && (
@@ -256,16 +350,43 @@ function App() {
 
                 )}
 
+            </section>
+
+
+            <section className="listado-section">
+
+                <div className="listado-header">
+
+                    <div>
+
+                        <h2>
+                            Puntos registrados
+                        </h2>
+
+                        <p>
+                            Información almacenada
+                            en PostgreSQL.
+                        </p>
+
+                    </div>
+
+
+                    <span className="contador">
+                        {puntos.length} puntos
+                    </span>
+
+                </div>
+
 
                 {cargando ? (
 
-                    <p>
+                    <p className="estado-texto">
                         Cargando puntos...
                     </p>
 
                 ) : puntos.length === 0 ? (
 
-                    <p className="sin-registros">
+                    <p className="estado-texto">
                         No existen puntos registrados.
                     </p>
 
